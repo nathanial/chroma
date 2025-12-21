@@ -147,7 +147,9 @@ def colorPickerSpec (config : ColorPickerConfig) : CustomSpec :=
           cmds := cmds.push (.fillPolygon knob config.knobColor)
           if let some stroke := config.knobStrokeColor then
             cmds := cmds.push (.strokePolygon knob stroke config.knobStrokeWidth)
-        return cmds }
+        return cmds
+    hitTest := some (fun layout p =>
+      (hueFromPoint layout.contentRect config p.x p.y).isSome) }
 
 def colorPicker (config : ColorPickerConfig) : WidgetBuilder := do
   let style : BoxStyle := {
