@@ -2,296 +2,497 @@
 
 A sophisticated color picker for artists and web developers.
 
-## Phase 1: Core Color Picker
+---
 
-### Color Wheel
-- [ ] HSL/HSV color wheel with draggable hue ring
-- [ ] Saturation/lightness triangle or square picker
-- [ ] Real-time color preview as you drag
-- [ ] Numeric input fields for precise values
+## Code Improvements
 
-### Color Sliders
-- [ ] RGB sliders (0-255)
-- [ ] HSL sliders (H: 0-360°, S/L: 0-100%)
-- [ ] HSV sliders
-- [ ] Alpha/opacity slider
-- [ ] Visual gradient backgrounds on each slider
+### [Priority: High] Extract Magic Numbers and Constants
 
-### Input Methods
-- [ ] Hex input field (#RRGGBB, #RGB, with/without alpha)
-- [ ] CSS color name autocomplete (140+ named colors from Tincture)
-- [ ] Eyedropper tool (sample from screen)
-- [ ] Paste color from clipboard (auto-detect format)
+**Current State:** The codebase contains hardcoded magic numbers scattered throughout:
+- `6.283185307179586` (2*pi) appears multiple times in `ColorPicker.lean`
+- Screen scale multipliers like `24 * screenScale`, `32 * screenScale` are inline
+- Font size calculations `28 * screenScale`, `16 * screenScale` are hardcoded
+- Widget ID comment `-- Widget IDs (build order): 0: column root, 1: title text...`
 
-### Color Preview
-- [ ] Large swatch showing current color
-- [ ] Checkerboard background for transparency visualization
-- [ ] Before/after comparison (original vs modified)
-- [ ] Text preview (dark/light text on color background)
+**Proposed Change:**
+- Define `twoPi` or `tau` constant in a shared location
+- Create a `Theme` or `Sizes` structure for UI constants
+- Use semantic names like `titleFontSize`, `bodyFontSize`, `defaultPadding`
+
+**Benefits:** Improved maintainability, easier theming, self-documenting code
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean` (lines 54-55, 104, 128, 158, 163)
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean` (lines 29-30, 39, 43, 204)
+
+**Estimated Effort:** Small
 
 ---
 
-## Phase 2: Color Harmony
+### [Priority: High] Improve Widget ID Management
 
-### Harmony Generators
-- [ ] Complementary (180° opposite)
-- [ ] Analogous (adjacent hues)
-- [ ] Triadic (120° apart)
-- [ ] Split-complementary
-- [ ] Tetradic/square (90° apart)
-- [ ] Custom angle offset
+**Current State:** Widget IDs are manually tracked via comments:
+```lean
+-- Widget IDs (build order):
+-- 0: column root
+-- 1: title text
+-- 2: color picker
+-- 3: subtitle text
+UIBuilder.register 2 (pickerHandler config)
+```
 
-### Harmony Visualization
-- [ ] Color wheel overlay showing harmony points
-- [ ] Linked swatches that update together
-- [ ] Lock individual colors while adjusting others
-- [ ] Drag harmony points on wheel to fine-tune
+**Proposed Change:**
+- Use named widgets via Arbor's `namedCustom` and lookup by name
+- Alternatively, capture widget ID from builder and use it directly
+- Consider adding a `colorPickerWidget` function that returns its ID
 
-### Harmony Palettes
-- [ ] Generate 3-7 color palettes from base color
-- [ ] Monochromatic variations (tints, shades, tones)
-- [ ] Warm/cool variations
-- [ ] One-click palette randomization
+**Benefits:** Less fragile code, no need to manually track build order, fewer bugs when UI changes
 
----
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean` (lines 200-215)
 
-## Phase 3: Color Spaces
-
-### Space Visualization
-- [ ] Toggle between color space views:
-  - sRGB cube
-  - HSL cylinder
-  - OkLab perceptual space
-  - CIELAB
-- [ ] 3D interactive color space explorer
-- [ ] Gamut boundary visualization
-
-### Space Conversion
-- [ ] Live conversion display (all spaces simultaneously)
-- [ ] Copy values in any format:
-  - Hex: `#ff6b35`
-  - RGB: `rgb(255, 107, 53)`
-  - HSL: `hsl(16, 100%, 60%)`
-  - OkLab: `oklab(0.7 0.12 0.08)`
-  - CMYK for print
-- [ ] CSS modern syntax: `rgb(255 107 53 / 80%)`
-
-### Perceptual Tools
-- [ ] OkLab-based lightness adjustment (perceptually uniform)
-- [ ] Chroma (saturation) adjustment in OkLCH
-- [ ] Hue rotation in perceptual space
+**Estimated Effort:** Small
 
 ---
 
-## Phase 4: Accessibility
+### [Priority: High] Separate Model from UI Configuration
 
-### Contrast Checking
-- [ ] WCAG 2.1 contrast ratio calculator
-- [ ] AA/AAA pass/fail indicators for:
-  - Normal text (4.5:1 / 7:1)
-  - Large text (3:1 / 4.5:1)
-  - UI components (3:1)
-- [ ] APCA (Accessible Perceptual Contrast Algorithm) support
-- [ ] Suggested adjustments to meet contrast requirements
+**Current State:** `PickerModel` only tracks hue and drag state, while `ColorPickerConfig` mixes rendering config with state:
+```lean
+structure PickerModel where
+  hue : Float := 0.08
+  dragging : Bool := false
 
-### Color Blindness Simulation
-- [ ] Protanopia (red-blind)
-- [ ] Deuteranopia (green-blind)
-- [ ] Tritanopia (blue-blind)
-- [ ] Achromatopsia (total color blindness)
-- [ ] Side-by-side normal vs simulated view
-- [ ] Palette-wide simulation
+structure ColorPickerConfig where
+  selectedHue : Float := 0.08  -- Duplicated from model!
+  selectedSaturation : Float := 1.0
+  selectedValue : Float := 1.0
+```
 
-### Accessibility Palette Tools
-- [ ] "Safe palette" generator (distinguishable for all viewers)
-- [ ] Contrast matrix for multi-color palettes
-- [ ] Warning indicators for problematic color combinations
+**Proposed Change:**
+- Expand `PickerModel` to include saturation, value, and other state
+- Make `ColorPickerConfig` purely about rendering (sizes, colors, segments)
+- Pass model values to config at render time instead of duplicating
 
----
+**Benefits:** Single source of truth for color state, cleaner separation of concerns
 
-## Phase 5: Palette Management
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean` (structures at lines 15-49)
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean` (lines 36-46)
 
-### Palette Creation
-- [ ] Create named palettes
-- [ ] Add/remove/reorder colors
-- [ ] Duplicate and modify palettes
-- [ ] Generate palette from image (color extraction)
-- [ ] AI-suggested palettes based on mood/theme
-
-### Palette Organization
-- [ ] Folders/categories for palettes
-- [ ] Tags and search
-- [ ] Favorite/star palettes
-- [ ] Recent colors history
-- [ ] Sort by hue, lightness, creation date
-
-### Palette Analysis
-- [ ] Palette harmony score
-- [ ] Color distribution visualization
-- [ ] Gap detection (missing hue ranges)
-- [ ] Duplicate/similar color detection
+**Estimated Effort:** Small
 
 ---
 
-## Phase 6: Gradients
+### [Priority: Medium] Add Comprehensive Type Aliases
 
-### Gradient Builder
-- [ ] Linear gradients with angle control
-- [ ] Radial gradients with focal point
-- [ ] Conic/sweep gradients
-- [ ] Multi-stop gradients (unlimited stops)
-- [ ] Drag stops to reposition
+**Current State:** Raw `Float` used everywhere for different semantic meanings (angles, positions, sizes, hue values).
 
-### Gradient Interpolation
-- [ ] Choose interpolation color space:
-  - sRGB (default, can have muddy midpoints)
-  - OkLab (perceptually smooth)
-  - HSL shorter/longer hue path
-- [ ] Easing functions between stops
-- [ ] Preview interpolation differences
+**Proposed Change:**
+- Define type aliases: `abbrev Hue := Float`, `abbrev Radians := Float`, `abbrev Degrees := Float`
+- Consider using Lean's units-of-measure patterns for stronger type safety
+- Use `Point` from Arbor consistently instead of separate x/y floats
 
-### Gradient Export
-- [ ] CSS gradient syntax
-- [ ] SVG gradient
-- [ ] PNG/image export at custom resolution
-- [ ] Gradient presets library
+**Benefits:** Self-documenting code, potential for compile-time unit checking
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean` (throughout)
+
+**Estimated Effort:** Medium
 
 ---
 
-## Phase 7: Export & Integration
+### [Priority: Medium] Modularize Geometry Functions
 
-### Export Formats
-- [ ] Copy single color in any format
-- [ ] Export palette as:
-  - CSS custom properties (`:root { --primary: #fff; }`)
-  - SCSS/Sass variables
-  - Tailwind config
-  - Swift/SwiftUI colors
-  - JSON
-  - ASE (Adobe Swatch Exchange)
-  - GPL (GIMP Palette)
-  - Procreate swatches
+**Current State:** Geometry utilities (`circlePoints`, `ringSegmentPoints`, `orientedRectPoints`) are defined inline in `ColorPicker.lean`.
 
-### Code Generation
-- [ ] Generate color utility functions
-- [ ] Theme object with semantic names
-- [ ] Dark/light theme pair generation
+**Proposed Change:**
+- Move to `Chroma/Geometry.lean` module
+- Consider contributing generic versions to Arbor if useful there
+- Add documentation and unit tests for these functions
 
-### Sharing
-- [ ] Shareable URL with encoded palette
-- [ ] Export as image (palette card)
-- [ ] QR code for mobile transfer
+**Benefits:** Better code organization, reusable geometry utilities, testable in isolation
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean` (lines 51-91)
+
+**Estimated Effort:** Small
 
 ---
 
-## Phase 8: Advanced Features
+### [Priority: Medium] Use Tincture Color Type Directly
 
-### Color Mixing
-- [ ] Blend two colors with adjustable ratio
-- [ ] Multiple blend modes (multiply, screen, overlay, etc.)
-- [ ] Mix multiple colors (like paint mixing)
-- [ ] Subtractive vs additive mixing toggle
+**Current State:** Creating colors via `Color.hsv hue 1.0 1.0` in rendering code.
 
-### Color Adjustment
-- [ ] Lighten/darken by percentage
-- [ ] Saturate/desaturate
-- [ ] Hue shift
-- [ ] Temperature adjustment (warm/cool)
-- [ ] Invert color
-- [ ] Grayscale conversion
+**Proposed Change:**
+- Store selected color as `Tincture.Color` in model
+- Leverage Tincture's harmony, format, and conversion functions
+- Use Tincture's HSV type for intermediate calculations
 
-### Delta E Distance
-- [ ] Measure perceptual distance between colors
-- [ ] Find nearest named color
-- [ ] Find nearest palette color
-- [ ] Cluster similar colors
+**Benefits:** Full access to Tincture's color manipulation, consistent color handling
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean`
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean`
+
+**Estimated Effort:** Medium
 
 ---
 
-## Phase 9: UI/UX Polish
+## Code Cleanup
 
-### Themes
-- [ ] Dark mode (default)
-- [ ] Light mode
-- [ ] High contrast mode
-- [ ] Custom accent color
+### [Priority: High] Expand Test Coverage
 
-### Keyboard Navigation
-- [ ] Full keyboard control
-- [ ] Vim-style navigation option
-- [ ] Customizable shortcuts
-- [ ] Quick command palette (Cmd+K style)
+**Issue:** Tests are minimal placeholder tests:
+```lean
+test "placeholder" :=
+  ensure true "sanity check"
+```
 
-### Layout
-- [ ] Resizable panels
-- [ ] Collapsible sections
-- [ ] Compact/expanded modes
-- [ ] Multi-window support
+**Location:** `/Users/Shared/Projects/lean-workspace/chroma/ChromaTests/Main.lean` (lines 24-25)
 
-### Performance
-- [ ] 60fps color wheel interaction
-- [ ] Instant color updates
-- [ ] Efficient palette rendering (1000+ colors)
+**Action Required:**
+- Add tests for `hueFromPoint` and `hueFromPosition` functions
+- Add tests for `circlePoints`, `ringSegmentPoints`, `orientedRectPoints`
+- Add property-based tests using Plausible (already a dependency)
+- Test edge cases: zero-size picker, boundary hits, angle wraparound
+
+**Estimated Effort:** Medium
 
 ---
 
-## Dependencies on Afferent
+### [Priority: Medium] Add Module Documentation
 
-Features requiring Afferent development:
+**Issue:** Module-level documentation exists but function documentation is sparse.
 
-| Chroma Feature | Afferent Requirement |
-|----------------|---------------------|
-| Color wheel | Arc/circle rendering, drag interaction |
-| Sliders | Gradient-filled rectangles, drag handles |
-| Text input | Text rendering, cursor, selection |
-| 3D color space | 3D mesh rendering (exists), camera controls |
-| Eyedropper | Screen capture API |
-| Image import | Image loading, pixel access |
+**Location:** All source files
+
+**Action Required:**
+- Add docstrings to public functions
+- Document expected ranges (e.g., hue is 0.0-1.0, not 0-360)
+- Add examples in docstrings for key functions
+
+**Estimated Effort:** Small
 
 ---
 
-## Tincture Features Already Available
+### [Priority: Medium] Remove Hardcoded Font Path
 
-Chroma can leverage these Tincture capabilities immediately:
+**Issue:** Font path is hardcoded to system location:
+```lean
+let titleFont <- Font.load "/System/Library/Fonts/Monaco.ttf" ...
+```
 
-- ✅ 10 color spaces (HSL, HSV, HWB, OkLab, OkLCH, Lab, LCH, XYZ, CMYK, Linear RGB)
-- ✅ Color harmony generation (complementary, triadic, analogous, etc.)
-- ✅ WCAG contrast ratio calculation
-- ✅ APCA contrast calculation
-- ✅ Color blindness simulation (all types)
-- ✅ Delta E color distance
-- ✅ 140+ named CSS colors
-- ✅ Blend modes (multiply, screen, overlay, etc.)
-- ✅ Gradient interpolation
-- ✅ Hex/RGB/HSL parsing and formatting
-- ✅ Color adjustment (lighten, darken, saturate, etc.)
+**Location:** `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean` (lines 29-30)
+
+**Action Required:**
+- Accept font path as configuration or command-line argument
+- Fall back to bundled font if system font unavailable
+- Consider embedding a default font or using Afferent's font discovery
+
+**Estimated Effort:** Small
+
+---
+
+### [Priority: Low] Add test.sh Script
+
+**Issue:** No `test.sh` script like other projects have; testing requires manual command.
+
+**Location:** Project root (missing file)
+
+**Action Required:**
+- Create `test.sh` that runs `./build.sh chroma_tests && .lake/build/bin/chroma_tests`
+- Mirror pattern from afferent and other sibling projects
+
+**Estimated Effort:** Small
+
+---
+
+## Feature Proposals
+
+### [Priority: High] Add Saturation/Value Picker
+
+**Description:** Implement the inner triangle or square picker for selecting saturation and value at the current hue.
+
+**Rationale:** A hue wheel alone is not sufficient for a functional color picker. Users need to select saturation and value/lightness as well.
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean` (new widget or extension)
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean`
+
+**Estimated Effort:** Large
+
+**Dependencies:** None (Arbor custom widget support already exists)
+
+---
+
+### [Priority: High] Display Selected Color Value
+
+**Description:** Show the currently selected color as hex, RGB, and HSL text below the picker.
+
+**Rationale:** Users need to see and copy the color value they've selected. Tincture already provides `toHex`, `toRgbString`, `toHslString`.
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean`
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean`
+
+**Estimated Effort:** Small
+
+**Dependencies:** None (Tincture.Format already available)
+
+---
+
+### [Priority: High] Add Color Harmony Display
+
+**Description:** Show complementary, triadic, and analogous colors based on selected hue.
+
+**Rationale:** Tincture provides full harmony generation (`Color.harmony`, `Color.harmonyOk`). This is a core feature for artists and designers.
+
+**Affected Files:**
+- New file: `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Harmony.lean`
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean`
+
+**Estimated Effort:** Medium
+
+**Dependencies:** None (Tincture.Harmony already available)
+
+---
+
+### [Priority: Medium] Add Contrast Checker
+
+**Description:** WCAG contrast ratio display between selected color and a reference (black/white).
+
+**Rationale:** Accessibility checking is crucial for web development. Tincture provides `contrastRatio`, `meetsWCAG_AA`, `meetsWCAG_AAA`.
+
+**Affected Files:**
+- New file: `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Contrast.lean`
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean`
+
+**Estimated Effort:** Medium
+
+**Dependencies:** None (Tincture.Contrast already available)
+
+---
+
+### [Priority: Medium] Add Color Blindness Simulation
+
+**Description:** Toggle to preview how the selected color appears under various color vision deficiencies.
+
+**Rationale:** Critical for accessible design. Tincture provides `simulateColorBlindness` for protanopia, deuteranopia, tritanopia, etc.
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean`
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean`
+
+**Estimated Effort:** Medium
+
+**Dependencies:** None (Tincture.Blindness already available)
+
+---
+
+### [Priority: Medium] Add Hex Input Field
+
+**Description:** Text input for entering colors in hex format (#RRGGBB).
+
+**Rationale:** Users often have a specific color code they want to visualize. Tincture provides `Color.fromHex` for parsing.
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean`
+
+**Estimated Effort:** Medium
+
+**Dependencies:** Requires text input widget from Arbor or custom implementation
+
+---
+
+### [Priority: Medium] Add Named Color Picker
+
+**Description:** Dropdown or grid showing the 140+ CSS named colors from Tincture.
+
+**Rationale:** Quick access to standard colors. Tincture provides `Named.fromName` and the full named color list.
+
+**Affected Files:**
+- New file: `/Users/Shared/Projects/lean-workspace/chroma/Chroma/NamedColors.lean`
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean`
+
+**Estimated Effort:** Medium
+
+**Dependencies:** None (Tincture.Named already available)
+
+---
+
+### [Priority: Low] Add Gradient Builder
+
+**Description:** UI for creating multi-stop gradients using the selected colors.
+
+**Rationale:** Gradients are essential for design work. Tincture provides `Gradient` with multiple interpolation spaces.
+
+**Affected Files:**
+- New file: `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Gradient.lean`
+
+**Estimated Effort:** Large
+
+**Dependencies:** Saturation/Value picker should be implemented first
+
+---
+
+### [Priority: Low] Add Palette Management
+
+**Description:** Save, load, and manage color palettes.
+
+**Rationale:** Users want to collect and organize colors for projects.
+
+**Affected Files:**
+- New file: `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Palette.lean`
+- New file: `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Storage.lean`
+
+**Estimated Effort:** Large
+
+**Dependencies:** Basic color picker should be complete first
+
+---
+
+### [Priority: Low] Add Export Functionality
+
+**Description:** Export selected color or palette to various formats (CSS, JSON, Swift).
+
+**Rationale:** Users need to use colors in their projects. Tincture.Format provides multiple output formats.
+
+**Affected Files:**
+- New file: `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Export.lean`
+
+**Estimated Effort:** Medium
+
+**Dependencies:** Basic color picker and palette management
+
+---
+
+## Architectural Improvements
+
+### [Priority: Medium] Introduce Application State Management
+
+**Current State:** State is minimal (`PickerModel` with just hue and dragging).
+
+**Proposed Change:**
+- Design a comprehensive `AppState` with:
+  - Current color (HSV and RGB representations)
+  - UI mode (picker, harmony, palette, etc.)
+  - History for undo/redo
+  - Saved palettes
+- Consider using Collimator lenses for nested state updates
+
+**Benefits:** Foundation for complex features, undo/redo support, state persistence
+
+**Affected Files:**
+- New file: `/Users/Shared/Projects/lean-workspace/chroma/Chroma/State.lean`
+- All existing files
+
+**Estimated Effort:** Large
+
+---
+
+### [Priority: Medium] Split UI into Composable Components
+
+**Current State:** `pickerUI` function builds entire UI in one place.
+
+**Proposed Change:**
+- Create separate widget components:
+  - `hueWheel : HueWheelConfig -> WidgetBuilder`
+  - `colorPreview : Color -> WidgetBuilder`
+  - `colorSliders : Color -> WidgetBuilder`
+  - `harmonyDisplay : Color -> HarmonyType -> WidgetBuilder`
+- Use Arbor's composable widget pattern
+
+**Benefits:** Reusable components, easier testing, cleaner code organization
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean` (split into multiple files)
+
+**Estimated Effort:** Medium
+
+---
+
+### [Priority: Low] Add Keyboard Navigation
+
+**Current State:** Only mouse interaction is supported.
+
+**Proposed Change:**
+- Arrow keys to adjust hue/saturation/value
+- Tab to move between components
+- Enter to confirm, Escape to cancel
+- Number keys for quick hue jumps (1-9 for 10%-90% around the wheel)
+
+**Benefits:** Accessibility, power-user efficiency
+
+**Affected Files:**
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/ColorPicker.lean`
+- `/Users/Shared/Projects/lean-workspace/chroma/Chroma/Main.lean`
+
+**Estimated Effort:** Medium
+
+**Dependencies:** Afferent keyboard event support (already exists)
 
 ---
 
 ## Milestones
 
-### v0.1 - Foundation
-- Basic color wheel
-- RGB/HSL sliders
-- Hex input
-- Single color output
+### v0.1 - Foundation (Current + Near-term)
+- [x] Basic hue wheel with drag interaction
+- [x] Color preview in center
+- [ ] Saturation/value picker (triangle or square)
+- [ ] Hex/RGB/HSL text display
+- [ ] Code cleanup: constants, widget IDs, test coverage
 
 ### v0.2 - Harmony
-- Harmony generators
-- 5-color palette view
-- Basic contrast checker
+- [ ] Color harmony visualization
+- [ ] 5-color palette view
+- [ ] Basic contrast checker
 
 ### v0.3 - Professional
-- Full accessibility suite
-- Palette management
-- Multiple export formats
+- [ ] Full accessibility suite (contrast, color blindness)
+- [ ] Named colors picker
+- [ ] Hex input field
 
 ### v0.4 - Complete
-- Gradients
-- 3D color space explorer
-- Image color extraction
+- [ ] Palette management
+- [ ] Export functionality
+- [ ] Gradient builder
 
 ### v1.0 - Release
-- Polished UI
-- Full keyboard support
-- Comprehensive documentation
+- [ ] Polished UI with theming
+- [ ] Keyboard navigation
+- [ ] Comprehensive documentation
+
+---
+
+## Tincture Features Available for Immediate Use
+
+The following Tincture capabilities can be leveraged without any library changes:
+
+| Feature | Module | Key Functions |
+|---------|--------|---------------|
+| 10 color spaces | `Tincture.Space.*` | HSL, HSV, HWB, OkLab, OkLCH, Lab, LCH, XYZ, CMYK, Linear RGB |
+| Color harmony | `Tincture.Harmony` | `complementary`, `triadic`, `analogous`, `harmony`, `harmonyOk` |
+| WCAG contrast | `Tincture.Contrast` | `contrastRatio`, `meetsWCAG_AA`, `meetsWCAG_AAA`, `apcaContrast` |
+| Color blindness | `Tincture.Blindness` | `simulateColorBlindness`, `isDistinguishableFor` |
+| Delta E distance | `Tincture.Distance` | Color perceptual distance |
+| Named colors | `Tincture.Named` | 140+ CSS named colors |
+| Blend modes | `Tincture.Blend` | multiply, screen, overlay, etc. |
+| Gradients | `Tincture.Gradient` | Multi-stop gradients with various interpolation spaces |
+| Color adjustment | `Tincture.Adjust` | lighten, darken, saturate, rotateHue |
+| Formatting | `Tincture.Format` | toHex, toRgbString, toHslString, toCssString |
+| Parsing | `Tincture.Parse` | fromHex, fromCss |
+| Palettes | `Tincture.Palette` | sequential, diverging, qualitative, accessible palettes |
+
+---
+
+## Dependencies on Sibling Libraries
+
+| Chroma Feature | Library | Requirement Status |
+|----------------|---------|-------------------|
+| Hue wheel rendering | Arbor | Available (custom widget) |
+| Color manipulation | Tincture | Available (full feature set) |
+| CSS layout | Trellis | Available (flexbox, grid) |
+| GPU rendering | Afferent | Available (Metal backend) |
+| Text input | Arbor/Afferent | Needs implementation |
+| State management | Collimator | Available (optics library) |
