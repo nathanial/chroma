@@ -7,9 +7,27 @@ import Trellis
 import Tincture
 
 open Arbor
+open Trellis (EdgeInsets)
 open Tincture
 
 namespace Chroma
+
+structure PickerModel where
+  hue : Float := 0.08
+  dragging : Bool := false
+deriving Repr
+
+inductive PickerMsg where
+  | SetHue (hue : Float)
+  | StartDrag
+  | EndDrag
+deriving Repr
+
+def updatePicker (msg : PickerMsg) (state : PickerModel) : PickerModel :=
+  match msg with
+  | .SetHue hue => { state with hue }
+  | .StartDrag => { state with dragging := true }
+  | .EndDrag => { state with dragging := false }
 
 structure ColorPickerConfig where
   size : Float := 320.0
@@ -160,5 +178,40 @@ def colorPicker (config : ColorPickerConfig) : WidgetBuilder := do
     minHeight := some config.size
   }
   custom (colorPickerSpec config) style
+
+def pickerHandler (config : ColorPickerConfig) : Handler PickerMsg :=
+  fun ctx ev =>
+    match ev, ctx.globalPos with
+    | .mouseDown _e, some p =>
+      match hueFromPoint ctx.layout.contentRect config p.x p.y with
+      | some hue =>
+        { msgs := #[.SetHue hue, .StartDrag], capture := some ctx.widgetId }
+      | none => {}
+    | .mouseMove _e, some p =>
+      if ctx.isCaptured then
+        let hue := hueFromPosition ctx.layout.contentRect p.x p.y
+        { msgs := #[.SetHue hue] }
+      else
+        {}
+    | .mouseUp _e, _ =>
+      { msgs := #[.EndDrag], releaseCapture := true }
+    | _, _ => {}
+
+def pickerUI (titleId bodyId : FontId) (config : ColorPickerConfig) (screenScale : Float) : UI PickerMsg :=
+  UIBuilder.buildFrom 0 do
+    let widget ← UIBuilder.lift do
+      column (gap := 24 * screenScale)
+        (style := { padding := EdgeInsets.uniform (32 * screenScale) }) #[
+          text' "Chroma" titleId Color.white .center,
+          colorPicker config,
+          text' "Drag on the ring to set hue" bodyId (Color.gray 0.7) .center
+        ]
+    -- Widget IDs (build order):
+    -- 0: column root
+    -- 1: title text
+    -- 2: color picker
+    -- 3: subtitle text
+    UIBuilder.register 2 (pickerHandler config)
+    pure widget
 
 end Chroma
