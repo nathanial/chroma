@@ -3,6 +3,7 @@
   Custom Arbor widget that renders a hue wheel.
 -/
 import Arbor
+import Trellis
 import Tincture
 
 open Arbor
@@ -18,6 +19,13 @@ structure ColorPickerConfig where
   selectedSaturation : Float := 1.0
   selectedValue : Float := 1.0
   showCenter : Bool := true
+  showKnob : Bool := true
+  knobWidth : Float := 22.0
+  knobHeight : Float := 10.0
+  knobColor : Color := Color.white
+  knobStrokeColor : Option Color := some (Color.gray 0.1)
+  knobStrokeWidth : Float := 1.0
+  previewBorderColor : Option Color := some (Color.gray 0.2)
   background : Option Color := none
   borderColor : Option Color := some (Color.gray 0.25)
 deriving Repr
@@ -46,6 +54,47 @@ def ringSegmentPoints (center : Point) (inner outer : Float) (a0 a1 : Float) : A
   let inner1 := Point.mk' (center.x + inner * cos1) (center.y + inner * sin1)
   let inner0 := Point.mk' (center.x + inner * cos0) (center.y + inner * sin0)
   #[outer0, outer1, inner1, inner0]
+
+def orientedRectPoints (center : Point) (angle : Float) (width height : Float) : Array Point :=
+  let cosA := Float.cos angle
+  let sinA := Float.sin angle
+  let halfW := width / 2
+  let halfH := height / 2
+  let tangent := Point.mk' (-sinA) cosA
+  let radial := Point.mk' cosA sinA
+  let tdx := tangent.x * halfW
+  let tdy := tangent.y * halfW
+  let rdx := radial.x * halfH
+  let rdy := radial.y * halfH
+  let p1 := Point.mk' (center.x - tdx - rdx) (center.y - tdy - rdy)
+  let p2 := Point.mk' (center.x + tdx - rdx) (center.y + tdy - rdy)
+  let p3 := Point.mk' (center.x + tdx + rdx) (center.y + tdy + rdy)
+  let p4 := Point.mk' (center.x - tdx + rdx) (center.y - tdy + rdy)
+  #[p1, p2, p3, p4]
+
+def hueFromPoint (rect : Trellis.LayoutRect) (config : ColorPickerConfig) (x y : Float) : Option Float :=
+  let center := Point.mk' (rect.x + rect.width / 2) (rect.y + rect.height / 2)
+  let outer := min rect.width rect.height / 2
+  let inner := max 0 (outer - config.ringThickness)
+  let dx := x - center.x
+  let dy := y - center.y
+  let dist := Float.sqrt (dx * dx + dy * dy)
+  if dist < inner || dist > outer then
+    none
+  else
+    let angle := Float.atan2 dy dx
+    let tau : Float := 6.283185307179586
+    let a := if angle < 0.0 then angle + tau else angle
+    some (a / tau)
+
+def hueFromPosition (rect : Trellis.LayoutRect) (x y : Float) : Float :=
+  let center := Point.mk' (rect.x + rect.width / 2) (rect.y + rect.height / 2)
+  let dx := x - center.x
+  let dy := y - center.y
+  let angle := Float.atan2 dy dx
+  let tau : Float := 6.283185307179586
+  let a := if angle < 0.0 then angle + tau else angle
+  a / tau
 
 def colorPickerSpec (config : ColorPickerConfig) : CustomSpec :=
   { measure := fun availWidth availHeight =>
@@ -78,11 +127,26 @@ def colorPickerSpec (config : ColorPickerConfig) : CustomSpec :=
             let previewColor := Color.hsv config.selectedHue config.selectedSaturation config.selectedValue
             let preview := circlePoints center previewRadius 64
             cmds := cmds.push (.fillPolygon preview previewColor)
+            if let some border := config.previewBorderColor then
+              cmds := cmds.push (.strokePolygon preview border 1.0)
 
         -- Outer border
         if let some border := config.borderColor then
           let outer := circlePoints center radius 96
           cmds := cmds.push (.strokePolygon outer border 1.0)
+
+        -- Selection knob
+        if config.showKnob then
+          let knobAngle := config.selectedHue * twoPi
+          let knobDist := (innerRadius + radius) / 2
+          let knobCenter := Point.mk'
+            (center.x + knobDist * Float.cos knobAngle)
+            (center.y + knobDist * Float.sin knobAngle)
+          let rectAngle := knobAngle + (twoPi / 4.0)
+          let knob := orientedRectPoints knobCenter rectAngle config.knobWidth config.knobHeight
+          cmds := cmds.push (.fillPolygon knob config.knobColor)
+          if let some stroke := config.knobStrokeColor then
+            cmds := cmds.push (.strokePolygon knob stroke config.knobStrokeWidth)
         return cmds }
 
 def colorPicker (config : ColorPickerConfig) : WidgetBuilder := do
