@@ -9,6 +9,8 @@ package chroma where
 
 -- Local workspace dependencies
 require tincture from ".." / "tincture"
+require trellis from ".." / "trellis"
+require arbor from ".." / "arbor"
 require afferent from ".." / "afferent"
 
 -- Test dependencies

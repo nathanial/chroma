@@ -3,5 +3,7 @@
   for artists and web developers.
 -/
 
--- Re-export Tincture for convenience
+-- Re-export core libraries for convenience
 import Tincture
+import Trellis
+import Arbor
