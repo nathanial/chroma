@@ -3,6 +3,7 @@
   Custom Arbor widget that renders a hue wheel.
 -/
 import Arbor
+import Chroma.Constants
 import Trellis
 import Tincture
 
@@ -51,8 +52,7 @@ deriving Repr
 def circlePoints (center : Point) (radius : Float) (steps : Nat) : Array Point :=
   Id.run do
     let steps := max 3 steps
-    let twoPi : Float := 6.283185307179586
-    let step := twoPi / steps.toFloat
+    let step := tau / steps.toFloat
     let mut pts : Array Point := Array.mkEmpty steps
     for i in [:steps] do
       let angle := step * i.toFloat
@@ -101,7 +101,6 @@ def hueFromPoint (rect : Trellis.LayoutRect) (config : ColorPickerConfig) (x y :
     none
   else
     let angle := Float.atan2 dy dx
-    let tau : Float := 6.283185307179586
     let a := if angle < 0.0 then angle + tau else angle
     some (a / tau)
 
@@ -110,7 +109,6 @@ def hueFromPosition (rect : Trellis.LayoutRect) (x y : Float) : Float :=
   let dx := x - center.x
   let dy := y - center.y
   let angle := Float.atan2 dy dx
-  let tau : Float := 6.283185307179586
   let a := if angle < 0.0 then angle + tau else angle
   a / tau
 
@@ -125,8 +123,7 @@ def colorPickerSpec (config : ColorPickerConfig) : CustomSpec :=
         let radius := min content.width content.height / 2
         let innerRadius := max 0 (radius - config.ringThickness)
         let segments := max 1 config.segments
-        let twoPi : Float := 6.283185307179586
-        let step := twoPi / segments.toFloat
+        let step := tau / segments.toFloat
         let mut cmds : Array RenderCommand := #[]
 
         -- Hue ring
@@ -155,12 +152,12 @@ def colorPickerSpec (config : ColorPickerConfig) : CustomSpec :=
 
         -- Selection knob
         if config.showKnob then
-          let knobAngle := config.selectedHue * twoPi
+          let knobAngle := config.selectedHue * tau
           let knobDist := (innerRadius + radius) / 2
           let knobCenter := Point.mk'
             (center.x + knobDist * Float.cos knobAngle)
             (center.y + knobDist * Float.sin knobAngle)
-          let rectAngle := knobAngle + (twoPi / 4.0)
+          let rectAngle := knobAngle + (tau / 4.0)
           let knob := orientedRectPoints knobCenter rectAngle config.knobWidth config.knobHeight
           cmds := cmds.push (.fillPolygon knob config.knobColor)
           if let some stroke := config.knobStrokeColor then
@@ -198,20 +195,17 @@ def pickerHandler (config : ColorPickerConfig) : Handler PickerMsg :=
     | _, _ => {}
 
 def pickerUI (titleId bodyId : FontId) (config : ColorPickerConfig) (screenScale : Float) : UI PickerMsg :=
-  UIBuilder.buildFrom 0 do
+  let sizes := uiSizes
+  let ids := widgetIds
+  UIBuilder.buildFrom ids.columnRoot do
     let widget ← UIBuilder.lift do
-      column (gap := 24 * screenScale)
-        (style := { padding := EdgeInsets.uniform (32 * screenScale) }) #[
+      column (gap := sizes.columnGap * screenScale)
+        (style := { padding := EdgeInsets.uniform (sizes.columnPadding * screenScale) }) #[
           text' "Chroma" titleId Color.white .center,
           colorPicker config,
           text' "Drag on the ring to set hue" bodyId (Color.gray 0.7) .center
         ]
-    -- Widget IDs (build order):
-    -- 0: column root
-    -- 1: title text
-    -- 2: color picker
-    -- 3: subtitle text
-    UIBuilder.register 2 (pickerHandler config)
+    UIBuilder.register ids.picker (pickerHandler config)
     pure widget
 
 end Chroma
