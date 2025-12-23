@@ -33,7 +33,7 @@ def main : IO UInt32 := do
   IO.println "============"
   IO.println ""
 
-  let result ← Crucible.runTests "Chroma Core" ChromaTests.cases
+  let result ← runAllSuites
 
   IO.println ""
   if result == 0 then
