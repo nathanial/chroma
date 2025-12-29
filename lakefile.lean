@@ -7,14 +7,13 @@ package chroma where
     ⟨`relaxedAutoImplicit, false⟩
   ]
 
--- Local workspace dependencies
-require tincture from ".." / "tincture"
-require trellis from ".." / "trellis"
-require arbor from ".." / "arbor"
-require afferent from ".." / "afferent"
+require tincture from git "https://github.com/nathanial/tincture" @ "v0.0.1"
+require trellis from git "https://github.com/nathanial/trellis" @ "v0.0.1"
+require arbor from git "https://github.com/nathanial/arbor" @ "v0.0.1"
+require afferent from git "https://github.com/nathanial/afferent" @ "v0.0.1"
 
 -- Test dependencies
-require crucible from ".." / "crucible"
+require crucible from git "https://github.com/nathanial/crucible" @ "v0.0.1"
 
 require plausible from git
   "https://github.com/leanprover-community/plausible.git" @ "v4.26.0"
