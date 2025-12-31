@@ -10,7 +10,7 @@ package chroma where
 require tincture from git "https://github.com/nathanial/tincture" @ "v0.0.1"
 require trellis from git "https://github.com/nathanial/trellis" @ "v0.0.1"
 require arbor from git "https://github.com/nathanial/arbor" @ "v0.0.1"
-require afferent from git "https://github.com/nathanial/afferent" @ "v0.0.1"
+require afferent from git "https://github.com/nathanial/afferent" @ "v0.0.2"
 
 -- Test dependencies
 require crucible from git "https://github.com/nathanial/crucible" @ "v0.0.1"
