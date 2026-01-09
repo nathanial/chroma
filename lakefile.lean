@@ -13,7 +13,7 @@ require arbor from git "https://github.com/nathanial/arbor" @ "v0.0.1"
 require afferent from git "https://github.com/nathanial/afferent" @ "v0.0.2"
 
 -- Test dependencies
-require crucible from git "https://github.com/nathanial/crucible" @ "v0.0.3"
+require crucible from git "https://github.com/nathanial/crucible" @ "v0.0.7"
 
 require plausible from git
   "https://github.com/leanprover-community/plausible.git" @ "v4.26.0"
