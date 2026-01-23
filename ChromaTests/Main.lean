@@ -24,7 +24,7 @@ test "Tincture color parsing works" := do
 test "placeholder" :=
   ensure true "sanity check"
 
-#generate_tests
+
 
 end ChromaTests
 
